@@ -17,8 +17,10 @@ const unlockAudio = () => {
     if (!audio.locked) {
       document.removeEventListener('keydown', unlockAudio, true)
       document.removeEventListener('pointerdown', unlockAudio, true)
+      document.removeEventListener('pointerup', unlockAudio, true)
     }
   })
 }
 document.addEventListener('keydown', unlockAudio, true)
 document.addEventListener('pointerdown', unlockAudio, true)
+document.addEventListener('pointerup', unlockAudio, true)

@@ -11,6 +11,7 @@ import Renderer from '../render/Renderer'
 import { sharedAtlas } from '../render/SpriteAtlas'
 import BattleOverlay, { type BattleView } from './BattleOverlay'
 import StatisticsScene from './StatisticsScene'
+import TouchControls from './TouchControls'
 import { playersSearch, replace, stagePath } from './router'
 import { allStages, useUIStore } from './store'
 
@@ -101,7 +102,14 @@ function Battle(props: {
     const { bindings } = useUIStore.getState()
     return props.multi ? [bindings.p1, bindings.p2] : [bindings.p1]
   })
+  const [oInput] = useState(function _CreateBattleInput() {
+    return new InputManager(controls)
+  })
   const [awaitingKey, setAwaitingKey] = useState(false)
+
+  function _ToggleTouchPause() {
+    togglePauseRef.current?.()
+  }
 
   useEffect(() => {
     const { startStageName, multi, onStageChange } = props
@@ -153,9 +161,11 @@ function Battle(props: {
           }
           document.addEventListener('keydown', onGesture)
           document.addEventListener('pointerdown', onGesture)
+          document.addEventListener('pointerup', onGesture)
           stopAwaitingKey = () => {
             document.removeEventListener('keydown', onGesture)
             document.removeEventListener('pointerdown', onGesture)
+            document.removeEventListener('pointerup', onGesture)
             stopAwaitingKey = null
           }
         })
@@ -188,7 +198,7 @@ function Battle(props: {
       let ended = false
       let currentStageName = startStageName
 
-      game = new Game(session, new InputManager(players.map((p) => p.control)), (s) => {
+      game = new Game(session, oInput, (s) => {
         const scene = s.scene
         if (scene != null) {
           if (scene !== mountedScene) {
@@ -282,26 +292,40 @@ function Battle(props: {
   }, [])
 
   return (
-    <div className="touch-battle-screen" style={{ position: 'relative', lineHeight: 0 }}>
-      <div ref={containerRef} />
-      {statistics != null && <StatisticsScene view={statistics.view} scores={statistics.scores} />}
-      <BattleOverlay
-        view={view}
-        pauseMenu={
-          paused
-            ? {
-                controls,
-                items: [
-                  { label: 'resume', onSelect: () => togglePauseRef.current?.() },
-                  { label: 'restart stage', onSelect: () => props.onLeave('restart') },
-                  { label: 'stage select', onSelect: () => props.onLeave('stage-select') },
-                  { label: 'title', onSelect: () => props.onLeave('title') },
-                ],
-              }
-            : null
-        }
-        awaitingKey={awaitingKey}
-      />
+    <div className="touch-battle-layout">
+      <div className="touch-battle-screen" style={{ position: 'relative', lineHeight: 0 }}>
+        <div ref={containerRef} />
+        {statistics != null && (
+          <StatisticsScene view={statistics.view} scores={statistics.scores} />
+        )}
+        <BattleOverlay
+          view={view}
+          pauseMenu={
+            paused
+              ? {
+                  controls,
+                  items: [
+                    { label: 'resume', onSelect: () => togglePauseRef.current?.() },
+                    { label: 'restart stage', onSelect: () => props.onLeave('restart') },
+                    { label: 'stage select', onSelect: () => props.onLeave('stage-select') },
+                    { label: 'title', onSelect: () => props.onLeave('title') },
+                  ],
+                }
+              : null
+          }
+          awaitingKey={awaitingKey}
+        />
+      </div>
+      {!props.multi && (
+        <TouchControls
+          oInput={oInput}
+          oControl={controls[0]}
+          bReady={view.stageName !== ''}
+          bAwaitingGesture={awaitingKey}
+          bPaused={paused}
+          fnTogglePause={_ToggleTouchPause}
+        />
+      )}
     </div>
   )
 }

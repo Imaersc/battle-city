@@ -1,11 +1,14 @@
 import { controlCodes, type PlayerControl } from './bindings'
 
+type INPUT_SOURCE = 'keyboard' | number
+
 /**
  * 键盘输入管理：跟踪当前按下的键，并记录方向键的按下顺序，
  * 以便「最近按下的方向键优先」（匹配原版手感）。
  * 开火为边沿触发：每个 tick 用 consumeFire 取一次「本 tick 内是否按下过」。
  */
 export default class InputManager {
+  private readonly m_mapHeldSources = new Map<string, Set<INPUT_SOURCE>>()
   private readonly down = new Set<string>()
   /** 当前仍按住的键，按最早→最新的顺序 */
   private order: string[] = []
@@ -37,19 +40,32 @@ export default class InputManager {
   }
 
   /** 按下一个键；DOM 事件走这里，无头运行（测试、回放）时直接调用。自动重复同样调用 */
-  keyDown(code: string): void {
-    this.touchedSince.add(code)
-    if (!this.down.has(code) && !this.suppressed.has(code)) {
-      this.down.add(code)
-      this.order.push(code)
-      this.firePressedSince.add(code)
+  keyDown(strCode: string, vSource: INPUT_SOURCE = 'keyboard'): void {
+    let setSources = this.m_mapHeldSources.get(strCode)
+    if (setSources == null) {
+      setSources = new Set()
+      this.m_mapHeldSources.set(strCode, setSources)
+    }
+    setSources.add(vSource)
+    this.touchedSince.add(strCode)
+    if (!this.down.has(strCode) && !this.suppressed.has(strCode)) {
+      this.down.add(strCode)
+      this.order.push(strCode)
+      this.firePressedSince.add(strCode)
     }
   }
 
-  keyUp(code: string): void {
-    this.down.delete(code)
-    this.suppressed.delete(code)
-    this.order = this.order.filter((c) => c !== code)
+  keyUp(strCode: string, vSource: INPUT_SOURCE = 'keyboard'): void {
+    const setSources = this.m_mapHeldSources.get(strCode)
+    setSources?.delete(vSource)
+    if (!setSources?.size) {
+      this.m_mapHeldSources.delete(strCode)
+      this.down.delete(strCode)
+      this.suppressed.delete(strCode)
+      this.order = this.order.filter(function _IsOtherKey(strHeldCode) {
+        return strHeldCode !== strCode
+      })
+    }
   }
 
   /** 切到别的窗口后松开的键收不到 keyup，失焦时当作全部松开 */
@@ -70,6 +86,7 @@ export default class InputManager {
 
   /** 清空全部输入状态，包括 suppressed：不像 releaseAll 那样等 keyup，因为 keyup 可能永远不来 */
   private clear(): void {
+    this.m_mapHeldSources.clear()
     this.down.clear()
     this.order = []
     this.firePressedSince.clear()

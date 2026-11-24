@@ -1,5 +1,10 @@
-.touch-menu {
+.touch-menu,
+.touch-battle-layout {
   display: contents;
+}
+
+.touch-controls {
+  display: none;
 }
 
 @media (hover: none) and (pointer: coarse) {
@@ -15,5 +20,111 @@
   .touch-battle-screen > div > canvas {
     width: 100%;
     height: auto;
+  }
+
+  body:has(.touch-battle-screen) > .github-corner {
+    display: none;
+  }
+
+  .touch-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: min(100%, 512px);
+    margin-inline: auto;
+    padding: 12px 12px max(12px, env(safe-area-inset-bottom));
+    touch-action: none;
+    user-select: none;
+  }
+
+  .touch-directions {
+    display: grid;
+    grid-template-columns: repeat(3, 48px);
+    grid-template-areas:
+      '. up .'
+      'left down right';
+    gap: 4px;
+    touch-action: none;
+  }
+
+  .touch-directions button:nth-child(1) {
+    grid-area: up;
+  }
+
+  .touch-directions button:nth-child(2) {
+    grid-area: left;
+  }
+
+  .touch-directions button:nth-child(3) {
+    grid-area: down;
+  }
+
+  .touch-directions button:nth-child(4) {
+    grid-area: right;
+  }
+
+  .touch-actions {
+    display: grid;
+    justify-items: end;
+    gap: 8px;
+    touch-action: none;
+  }
+
+  .touch-controls button {
+    min-width: 48px;
+    min-height: 48px;
+    padding: 4px 9px;
+    border: 2px solid #67553d;
+    border-radius: 6px;
+    background: #29241b;
+    color: #ffe2a3;
+    font:
+      600 14px system-ui,
+      sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .touch-actions button[data-key] {
+    min-width: 64px;
+    min-height: 56px;
+  }
+
+  .touch-controls button[data-pressed] {
+    background: #ffca63;
+    color: #29241b;
+  }
+
+  .touch-controls button:disabled {
+    opacity: 0.55;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 600px) {
+  .touch-battle-layout:has(.touch-controls) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'directions battle actions';
+    align-items: end;
+    width: min(100%, 900px);
+    margin-inline: auto;
+    padding: 0 12px env(safe-area-inset-bottom);
+    gap: 8px;
+  }
+
+  .touch-controls {
+    display: contents;
+  }
+
+  .touch-battle-screen {
+    grid-area: battle;
+  }
+
+  .touch-directions {
+    grid-area: directions;
+  }
+
+  .touch-actions {
+    grid-area: actions;
   }
 }

@@ -6,6 +6,39 @@ const key = (type: 'keydown' | 'keyup', code: string) =>
   document.dispatchEvent(new KeyboardEvent(type, { code }))
 
 describe('InputManager', () => {
+  it('keeps a shared key active until the keyboard and all touch pointers release it', function _CheckSharedInput() {
+    const oInput = new InputManager()
+    const strFire = PLAYER1_CONTROL.fire
+    oInput.keyDown(strFire)
+    oInput.keyDown(strFire, 11)
+    oInput.keyDown(strFire, 12)
+
+    oInput.endTick()
+    oInput.keyUp(strFire, 11)
+    oInput.keyUp(strFire)
+    expect(oInput.consumeFire(PLAYER1_CONTROL)).toBe(true)
+    expect(oInput.firePressed(PLAYER1_CONTROL)).toBe(false)
+
+    oInput.keyUp(strFire, 12)
+    expect(oInput.consumeFire(PLAYER1_CONTROL)).toBe(false)
+  })
+
+  it('waits for every source to release a paused key before accepting a new press', function _CheckPauseRelease() {
+    const oInput = new InputManager()
+    const strUp = PLAYER1_CONTROL.up
+    oInput.keyDown(strUp)
+    oInput.keyDown(strUp, 11)
+    oInput.releaseAll()
+
+    oInput.keyUp(strUp, 11)
+    oInput.keyDown(strUp)
+    expect(oInput.isDown(strUp)).toBe(false)
+    oInput.keyUp(strUp)
+
+    oInput.keyDown(strUp, 12)
+    expect(oInput.isDown(strUp)).toBe(true)
+  })
+
   it('releaseAll 后仍按着的键在松开前不生效，自动重复的 keydown 也忽略', () => {
     const input = new InputManager()
     input.attach()
