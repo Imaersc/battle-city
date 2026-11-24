@@ -54,7 +54,9 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File deploy/local-auth/
 
 在浏览器打开 [本机测试入口](http://127.0.0.1:8081/)。返回 `/login` 可退出会话。关闭时执行上面的代理命令并将操作改为 `StopProxy`，再在认证服务终端按 Ctrl+C。
 
-Nginx 与认证服务仅监听本机回环地址。数据库位于 `%LOCALAPPDATA%\BattleCity\Auth`，仅由初始化用户与系统账号访问。审计仅保存事件、时间和已知账号的内部 ID，最多保留最近 7 天的 2000 条事件。会话首次打开游戏时记录一次。
+Nginx 与认证服务仅监听本机回环地址。数据库位于 `%LOCALAPPDATA%\BattleCity\Auth`，仅由初始化用户与系统账号访问。审计仅保存事件、时间和已知账号的内部 ID，会话首次打开游戏时记录一次。每次写入事件时清理超过 7 天的记录，最多保留 2000 条。
+
+在本机终端执行 `node deploy/local-auth/server.mjs audit`，可查看事件、UTC 时间和关联账号。失败事件中的账号是被尝试的账号，`game_opened` 中的账号已通过验证。
 
 ### 开发进度
 

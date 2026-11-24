@@ -24,6 +24,25 @@ export function localDataDirectory() {
 
 export const sessionSeconds = g_dwSessionSeconds
 
+export function readAudit(strDataDir) {
+  const oDb = new DatabaseSync(join(strDataDir, 'account-actual.db'), { readOnly: true })
+  try {
+    return oDb
+      .prepare(
+        `
+      SELECT strftime('%Y-%m-%dT%H:%M:%fZ', occurred_at / 1000.0, 'unixepoch') AS utc_time,
+             event, users.username
+      FROM login_events LEFT JOIN users ON users.id = login_events.user_id
+      WHERE occurred_at >= ?
+      ORDER BY login_events.id DESC
+    `,
+      )
+      .all(Date.now() - g_dwAuditRetentionMs)
+  } finally {
+    oDb.close()
+  }
+}
+
 export class AuthStore {
   #m_oDb
 

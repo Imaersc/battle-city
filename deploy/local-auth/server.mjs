@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { AuthStore, localDataDirectory, sessionSeconds } from './store.mjs'
+import { AuthStore, localDataDirectory, readAudit, sessionSeconds } from './store.mjs'
 
 const g_strCookieName = 'battle_city_session'
 const g_strGamePath = '/battle-city/'
@@ -192,8 +192,12 @@ export function createAuthServer(oStore) {
 
 async function _Run() {
   const [strAction, strUsername] = process.argv.slice(2)
+  if (strAction === 'audit') {
+    console.table(readAudit(localDataDirectory()))
+    return
+  }
   if (strAction !== 'init' && strAction !== 'serve') {
-    throw new Error('Usage: server.mjs init <username> (password on stdin) or server.mjs serve.')
+    throw new Error('Usage: server.mjs init <username> (password on stdin), serve, or audit.')
   }
 
   const oStore = new AuthStore(localDataDirectory())
