@@ -1,16 +1,30 @@
 import { strict as assert } from 'node:assert'
 import { randomBytes } from 'node:crypto'
 import { once } from 'node:events'
-import { mkdtempSync, readFileSync, rmdirSync, unlinkSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, mkdtempSync, readFileSync, rmdirSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { test } from 'node:test'
 import { createAuthServer } from './server.mjs'
-import { AuthStore } from './store.mjs'
+import { AuthStore, assertWorkspacePath, hasLocalAccount } from './store.mjs'
+
+test('rejects ambiguous and parent-relative database paths', function _TestWorkspacePaths() {
+  for (const strPath of [
+    'C:account-actual.db',
+    'data/account.db:stream',
+    'staging/../../outside.db',
+  ]) {
+    assert.throws(function _CheckPath() {
+      assertWorkspacePath(strPath)
+    }, /repository-relative path/)
+  }
+})
 
 test('protects sessions, records access and omits supplied passwords from SQLite', async function _TestAuth() {
-  const strDataDir = mkdtempSync(join(tmpdir(), 'battle-city-auth-'))
+  const strTestDir = join('staging', 'local-auth', 'tests')
+  assertWorkspacePath(strTestDir)
+  mkdirSync(strTestDir, { recursive: true })
+  const strDataDir = mkdtempSync(join(strTestDir, 'auth-'))
   const strDbPath = join(strDataDir, 'account-actual.db')
   const strPassword = randomBytes(24).toString('hex')
   const strRejectedPassword = randomBytes(24).toString('hex')
@@ -35,7 +49,9 @@ test('protects sessions, records access and omits supplied passwords from SQLite
   }
 
   try {
+    assert.equal(hasLocalAccount(strDataDir), false)
     await oStore.initializeAccount('tester', strPassword)
+    assert.equal(hasLocalAccount(strDataDir), true)
     await assert.rejects(
       oStore.initializeAccount('another', strPassword),
       /already been initialized/,

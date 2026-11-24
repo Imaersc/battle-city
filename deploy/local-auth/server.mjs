@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
+import { join, relative } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { AuthStore, localDataDirectory, readAudit, sessionSeconds } from './store.mjs'
+import { AuthStore, g_strDataDir, hasLocalAccount, readAudit, sessionSeconds } from './store.mjs'
 
 const g_strCookieName = 'battle_city_session'
 const g_strGamePath = '/battle-city/'
@@ -192,16 +193,14 @@ export function createAuthServer(oStore) {
 
 async function _Run() {
   const [strAction, strUsername] = process.argv.slice(2)
-  if (strAction === 'audit') {
-    console.table(readAudit(localDataDirectory()))
-    return
-  }
-  if (strAction !== 'init' && strAction !== 'serve') {
-    throw new Error('Usage: server.mjs init <username> (password on stdin), serve, or audit.')
-  }
-
-  const oStore = new AuthStore(localDataDirectory())
-  if (strAction === 'init') {
+  if (relative(process.cwd(), process.argv[1]) !== join('deploy', 'local-auth', 'server.mjs')) {
+    throw new Error('Run the authentication command from the repository root.')
+  } else if (strAction === 'status') {
+    process.exitCode = hasLocalAccount(g_strDataDir) ? 0 : 3
+  } else if (strAction === 'audit') {
+    console.table(readAudit(g_strDataDir))
+  } else if (strAction === 'init') {
+    const oStore = new AuthStore(g_strDataDir)
     try {
       const strPassword = readFileSync(0, 'utf8').replace(/\r?\n$/, '')
       await oStore.initializeAccount(strUsername ?? '', strPassword)
@@ -209,13 +208,13 @@ async function _Run() {
     } finally {
       oStore.close()
     }
-  } else {
-    if (!oStore.hasAccount()) {
-      oStore.close()
+  } else if (strAction === 'serve') {
+    if (!hasLocalAccount(g_strDataDir)) {
       throw new Error(
         'Initialize the local test account before starting the authentication server.',
       )
     }
+    const oStore = new AuthStore(g_strDataDir)
     const oServer = createAuthServer(oStore)
     oServer.on('close', function _CloseStore() {
       oStore.close()
@@ -223,6 +222,8 @@ async function _Run() {
     oServer.listen(8788, '127.0.0.1', function _ReportReady() {
       console.log('Local authentication server listening on 127.0.0.1:8788.')
     })
+  } else {
+    throw new Error('Usage: server.mjs init <username> (password on stdin), serve, or audit.')
   }
 }
 
@@ -230,5 +231,10 @@ if (
   process.argv[1] &&
   fileURLToPath(import.meta.url) === fileURLToPath(pathToFileURL(process.argv[1]))
 ) {
-  await _Run()
+  try {
+    await _Run()
+  } catch (oError) {
+    console.error(oError.message)
+    process.exitCode = 1
+  }
 }

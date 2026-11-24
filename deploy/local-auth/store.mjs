@@ -1,6 +1,6 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
-import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, lstatSync, mkdirSync } from 'node:fs'
+import { isAbsolute, join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { promisify } from 'node:util'
 
@@ -15,17 +15,49 @@ function _HashToken(strToken) {
   return createHash('sha256').update(strToken).digest('hex')
 }
 
-export function localDataDirectory() {
-  if (!process.env.LOCALAPPDATA) {
-    throw new Error('LOCALAPPDATA is required for the local authentication database.')
+export function assertWorkspacePath(strPath) {
+  const arrParts = strPath.split(/[/\\]/)
+  if (isAbsolute(strPath) || strPath.includes(':') || arrParts.includes('..')) {
+    throw new Error('Authentication data requires a repository-relative path.')
   }
-  return join(process.env.LOCALAPPDATA, 'BattleCity', 'Auth')
+  let strEntry = '.'
+  for (const strPart of arrParts) {
+    strEntry = join(strEntry, strPart)
+    const oStat = lstatSync(strEntry, { throwIfNoEntry: false })
+    if (oStat?.isSymbolicLink() || (oStat?.isFile() && oStat.nlink > 1)) {
+      throw new Error('Linked authentication files and directories are not supported.')
+    }
+  }
 }
 
+export const g_strDataDir = join('staging', 'local-auth', 'data')
 export const sessionSeconds = g_dwSessionSeconds
 
+function _DbPath(strDataDir) {
+  const strDb = join(strDataDir, 'account-actual.db')
+  for (const strSuffix of ['', '-journal', '-wal', '-shm']) {
+    assertWorkspacePath(strDb + strSuffix)
+  }
+  return strDb
+}
+
+export function hasLocalAccount(strDataDir) {
+  const strDb = _DbPath(strDataDir)
+  let bHasAccount = false
+  if (existsSync(strDb)) {
+    const oDb = new DatabaseSync(strDb, { readOnly: true })
+    try {
+      const oTable = oDb.prepare("SELECT 1 FROM sqlite_schema WHERE name = 'users'").get()
+      bHasAccount = oTable != null && oDb.prepare('SELECT id FROM users LIMIT 1').get() != null
+    } finally {
+      oDb.close()
+    }
+  }
+  return bHasAccount
+}
+
 export function readAudit(strDataDir) {
-  const oDb = new DatabaseSync(join(strDataDir, 'account-actual.db'), { readOnly: true })
+  const oDb = new DatabaseSync(_DbPath(strDataDir), { readOnly: true })
   try {
     return oDb
       .prepare(
@@ -47,8 +79,9 @@ export class AuthStore {
   #m_oDb
 
   constructor(strDataDir) {
+    const strDb = _DbPath(strDataDir)
     mkdirSync(strDataDir, { recursive: true, mode: 0o700 })
-    this.#m_oDb = new DatabaseSync(join(strDataDir, 'account-actual.db'))
+    this.#m_oDb = new DatabaseSync(strDb)
     this.#m_oDb.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY CHECK (id = 1),

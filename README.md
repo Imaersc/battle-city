@@ -33,28 +33,28 @@ pnpm build:npm   # 按相对路径打包到 www/，npm 包用的就是它
 
 ### Windows 本机登录测试
 
-需要 Node.js 24 和带有 `http_auth_request_module` 的 Nginx。认证服务使用 Node.js 自带的 SQLite。先关闭局域网可访问的 Vite 开发服务。
-
-在仓库目录执行一次初始化，再构建游戏。将 `test-user` 替换为测试账号，按提示输入密码。
+需要 Node.js 24、pnpm 和带有 `http_auth_request_module` 的 Nginx，命令均通过 PATH 调用。首次克隆后，在仓库根目录安装依赖并构建游戏：
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File deploy/local-auth/local-auth.ps1 -Action Initialize -Username test-user
+pnpm.cmd install --frozen-lockfile
 pnpm.cmd build
 ```
 
-在一个终端保持认证服务运行。在另一个终端启动 Nginx。
+在仓库根目录启动两个服务：
 
 ```powershell
-node deploy/local-auth/server.mjs serve
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\start.ps1
 ```
+
+在仓库根目录关闭两个服务：
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File deploy/local-auth/local-auth.ps1 -Action StartProxy
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\stop.ps1
 ```
 
-在浏览器打开 [本机测试入口](http://127.0.0.1:8081/)。返回 `/login` 可退出会话。关闭时执行上面的代理命令并将操作改为 `StopProxy`，再在认证服务终端按 Ctrl+C。
+启动脚本同时启动认证后端和 Nginx。首次启动会提示输入测试账号及密码，后续启动复用项目内数据库。在浏览器打开 [本机测试入口](http://127.0.0.1:8081/)，返回 `/login` 可退出会话。关闭脚本停止该工作目录启动的两个服务。
 
-Nginx 与认证服务仅监听本机回环地址。数据库位于 `%LOCALAPPDATA%\BattleCity\Auth`，仅由初始化用户与系统账号访问。审计仅保存事件、时间和已知账号的内部 ID，会话首次打开游戏时记录一次。每次写入事件时清理超过 7 天的记录，最多保留 2000 条。
+两个服务仅监听本机回环地址。运行文件位于 Git 忽略的 `staging/local-auth/`，账号数据库位于其中的 `data/`，目录权限授予初始化用户和 Windows 的 SYSTEM 账号。新克隆会在首次启动时创建自己的数据库。审计仅保存事件、时间和已知账号的内部 ID，会话首次打开游戏时记录一次。每次写入事件时清理超过 7 天的记录，最多保留 2000 条。
 
 在本机终端执行 `node deploy/local-auth/server.mjs audit`，可查看事件、UTC 时间和关联账号。失败事件中的账号是被尝试的账号，`game_opened` 中的账号已通过验证。
 
