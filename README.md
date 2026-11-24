@@ -31,6 +31,31 @@ pnpm build       # 按相对路径打包到 dist/，放在任意路径下都能�
 pnpm build:npm   # 按相对路径打包到 www/，npm 包用的就是它
 ```
 
+### Windows 本机登录测试
+
+需要 Node.js 24 和带有 `http_auth_request_module` 的 Nginx。认证服务使用 Node.js 自带的 SQLite。先关闭局域网可访问的 Vite 开发服务。
+
+在仓库目录执行一次初始化，再构建游戏。将 `test-user` 替换为测试账号，按提示输入密码。
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File deploy/local-auth/local-auth.ps1 -Action Initialize -Username test-user
+pnpm.cmd build
+```
+
+在一个终端保持认证服务运行。在另一个终端启动 Nginx。
+
+```powershell
+node deploy/local-auth/server.mjs serve
+```
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File deploy/local-auth/local-auth.ps1 -Action StartProxy
+```
+
+在浏览器打开 [本机测试入口](http://127.0.0.1:8081/)。返回 `/login` 可退出会话。关闭时执行上面的代理命令并将操作改为 `StopProxy`，再在认证服务终端按 Ctrl+C。
+
+Nginx 与认证服务仅监听本机回环地址。数据库位于 `%LOCALAPPDATA%\BattleCity\Auth`，仅由初始化用户与系统账号访问。审计仅保存事件、时间和已知账号的内部 ID，最多保留最近 7 天的 2000 条事件。会话首次打开游戏时记录一次。
+
 ### 开发进度
 
 **Milestone 0.4.0（2026-09-28）**
