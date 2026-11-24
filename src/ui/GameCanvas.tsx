@@ -282,7 +282,7 @@ function Battle(props: {
   }, [])
 
   return (
-    <div style={{ position: 'relative', lineHeight: 0 }}>
+    <div className="touch-battle-screen" style={{ position: 'relative', lineHeight: 0 }}>
       <div ref={containerRef} />
       {statistics != null && <StatisticsScene view={statistics.view} scores={statistics.scores} />}
       <BattleOverlay

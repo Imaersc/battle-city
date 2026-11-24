@@ -11,6 +11,7 @@ import Options from './screens/Options'
 import StageList from './screens/StageList'
 import Title from './screens/Title'
 import { allStages, useUIStore, type GameResult } from './store'
+import './touch.css'
 
 export default function App() {
   return <CurrentScreen />
@@ -65,15 +66,27 @@ function CurrentScreen() {
   }
   switch (route.screen) {
     case 'title':
-      return <Title />
+      return (
+        <div className="touch-menu">
+          <Title />
+        </div>
+      )
     case 'choose':
-      return <ChooseStage stageName={route.stageName!} multi={route.multi} />
+      return (
+        <div className="touch-menu">
+          <ChooseStage stageName={route.stageName!} multi={route.multi} />
+        </div>
+      )
     case 'stage-list':
       return <StageList tab={route.tab!} page={route.page!} />
     case 'battle':
       return <GameCanvas stageName={route.stageName!} multi={route.multi} />
     case 'gameover':
-      return <GameOver result={lastGame!} multi={route.multi} />
+      return (
+        <div className="touch-menu">
+          <GameOver result={lastGame!} multi={route.multi} />
+        </div>
+      )
     case 'editor':
       return <Editor view={route.view!} />
     case 'gallery':

@@ -1,0 +1,19 @@
+.touch-menu {
+  display: contents;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .touch-menu,
+  .touch-battle-screen {
+    display: block;
+    width: min(100%, 512px, calc(100svh * 16 / 15));
+    margin-inline: auto;
+  }
+
+  .touch-menu > .screen,
+  .touch-battle-screen > svg,
+  .touch-battle-screen > div > canvas {
+    width: 100%;
+    height: auto;
+  }
+}
